@@ -4,6 +4,7 @@ llama-index-core>=0.14.0
 langchain-openai>=1.1.0
 llama-index-llms-openai>=0.6.12
 llama-index-llms-langchain>=0.7.0
+llama-index-experimental
 nba_api>=1.11.3
 pandas>=2.3.3
 requests>=2.32.5
