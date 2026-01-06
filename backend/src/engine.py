@@ -8,6 +8,10 @@ from langchain.agents import create_agent
 from langchain_core.tools import Tool
 from dotenv import load_dotenv
 from nba_data import getPlayerStats
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
+from pydantic import BaseModel
 
 load_dotenv()
 
@@ -15,20 +19,9 @@ Settings.llm=OpenAI(model="gpt-4o-mini") # initializes the llm that llamaindex u
 llm_langchain = ChatOpenAI(model='gpt-4o-mini') # initializes the llm that langchain uses
 #documents = SimpleDirectoryReader('./backend/src/data').load_data() # loads data for llamaindex to use
 #index = VectorStoreIndex.from_documents(documents) # indexes the data
-CSV_PATH = "./backend/src/data/Player Per Game.csv"
-PICKLE_PATH = CSV_PATH.replace(".csv", ".pkl")
 
-def get_data(): 
-    # If the fast-load version exists, use it
-    if os.path.exists(PICKLE_PATH):
-        return pd.read_pickle(PICKLE_PATH)
-    
-    # Otherwise, load the slow way and save for next time
-    df = pd.read_csv(CSV_PATH)
-    df.to_pickle(PICKLE_PATH)
-    return df
 
-df_stats = get_data()
+df_stats = pd.read_csv("./data/Player Per Game.csv")
 
 query_engine = PandasQueryEngine(df=df_stats,verbose = True) # makes the data a query engine
 
@@ -50,6 +43,31 @@ tools = [ # this wraps the llamaindex database into a tool that langchain can us
 agent = create_agent(tools=tools, model=llm_langchain, system_prompt="You are a helpful professional NBA analyst. Answer the user's questions using the provided tools")
 
 
+app = FastAPI()
+
 response = agent.invoke({"messages": [{"role": "user", "content": "Whos the greatest player of all time?"}]})
-print("Agent Response Keys:", response.keys())
-print(response["messages"][-1].content)
+
+origins = [ # will need to add the url for the rendering site
+    "http://localhost:5174"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials = True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+#print("Agent Response Keys:", response.keys())
+#print(response["messages"][-1].content)
+
+class ChatMessage(BaseModel):
+    message:str
+
+@app.post("/chat")
+async def handle_chat(input:ChatMessage): # takes in dictionary with {message : "___"} as the typing
+    query = input.message
+    response = agent.invoke({"messages": [{"role": "user", "content": query}]})
+    return {"reply": response["messages"][-1].content}
