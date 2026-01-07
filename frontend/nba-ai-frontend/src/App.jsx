@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Trophy, Activity, MessageSquare, Zap } from 'lucide-react';
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm';
 
 const App = () => {
   const [messages, setMessages] = useState([
@@ -93,13 +95,36 @@ const App = () => {
         </header>
 
         <div style={s.chatWindow}>
-          {messages.map((msg) => (
-            <div key={msg.id} style={msg.sender === 'user' ? s.userBubble : s.botBubble}>
-              {msg.text}
-            </div>
-          ))}
-          <div ref={scrollRef} />
-        </div>
+        {messages.map((msg) => (
+          <div key={msg.id} style={msg.sender === 'user' ? s.userBubble : s.botBubble}>
+            
+            {/* --- THIS IS THE "BOT BUBBLE" LOGIC --- */}
+            {msg.sender === 'user' ? (
+              // 1. User text is simple and doesn't need Markdown
+              msg.text
+            ) : (
+              // 2. Bot text uses the Markdown renderer for tables and bolding
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  p: ({node, ...props}) => <p style={{ margin: '0 0 10px 0' }} {...props} />,
+                  table: ({node, ...props}) => (
+                    <div style={{ overflowX: 'auto', margin: '10px 0' }}>
+                      <table style={{ borderCollapse: 'collapse', width: '100%' }} {...props} />
+                    </div>
+                  ),
+                  // ... (rest of the styling props I gave you)
+                }}
+              >
+                {msg.text}
+              </ReactMarkdown>
+            )}
+            {/* --- END OF BOT BUBBLE LOGIC --- */}
+
+          </div>
+        ))}
+        <div ref={scrollRef} />
+      </div>
 
         <div style={s.inputArea}>
           <div style={s.inputWrapper}>

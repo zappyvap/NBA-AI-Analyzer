@@ -7,11 +7,13 @@ from langchain_openai import ChatOpenAI
 from langchain.agents import create_agent
 from langchain_core.tools import Tool
 from dotenv import load_dotenv
-from nba_data import getPlayerStats
+from .nba_data import getPlayerStats
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from pydantic import BaseModel
+from langchain_community.chat_message_histories import ChatMessageHistory
+from langchain_core.runnables.history import GetSessionHistoryCallable
 
 load_dotenv()
 
@@ -21,7 +23,7 @@ llm_langchain = ChatOpenAI(model='gpt-4o-mini') # initializes the llm that langc
 #index = VectorStoreIndex.from_documents(documents) # indexes the data
 
 
-df_stats = pd.read_csv("./data/Player Per Game.csv")
+df_stats = pd.read_csv("./src/data/Player Per Game.csv")
 
 query_engine = PandasQueryEngine(df=df_stats,verbose = True) # makes the data a query engine
 
@@ -39,16 +41,18 @@ tools = [ # this wraps the llamaindex database into a tool that langchain can us
     # add tool for team stuff
 ]
 
+message_history = ChatMessageHistory()
+
 #this just creates the langchain agent with the llm it needs and the tools
-agent = create_agent(tools=tools, model=llm_langchain, system_prompt="You are a helpful professional NBA analyst. Answer the user's questions using the provided tools")
+agent = create_agent(tools=tools, model=llm_langchain, system_prompt="You are a helpful professional NBA analyst. Answer the user's questions using the provided tools. Use the chat history to maintain context.")
 
 
 app = FastAPI()
 
-response = agent.invoke({"messages": [{"role": "user", "content": "Whos the greatest player of all time?"}]})
 
 origins = [ # will need to add the url for the rendering site
-    "http://localhost:5174"
+    "http://localhost:5174",
+    "http://localhost:5173"
 ]
 
 app.add_middleware(
@@ -69,5 +73,11 @@ class ChatMessage(BaseModel):
 @app.post("/chat")
 async def handle_chat(input:ChatMessage): # takes in dictionary with {message : "___"} as the typing
     query = input.message
-    response = agent.invoke({"messages": [{"role": "user", "content": query}]})
-    return {"reply": response["messages"][-1].content}
+
+    message_history.add_user_message(query)
+    history_messages = message_history.messages
+
+    response = agent.invoke({"messages": history_messages})
+    ai_reply = response['messages'][-1].content
+    message_history.add_ai_message(ai_reply)
+    return {"reply": ai_reply}
