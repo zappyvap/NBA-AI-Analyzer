@@ -17,62 +17,83 @@ def getPlayerStats(player_name):
     player_id = player[0]['id']
     career = playercareerstats.PlayerCareerStats(player_id=player_id)
     df = career.get_data_frames()[0]
-
+    print("Using Player Stats")
     return df.to_string() #easier for ai to read
 
 # function for getting individual team stats
 def getTeamStats(team_name): 
     # 1. Find the team
-    if not team_name:
-        return "Team name is required"
-    
     team_search = teams.find_teams_by_full_name(team_name)
     if not team_search:
         return "Team could not be found"
     
     team_id = team_search[0]['id']
+    season = '2025-26'
 
-    # 2. Fetch the stats for the team
-    # 'Overall' is the specific dashboard that contains season-long averages
+    # 2. Fetch Performance Stats (PPG, FG%, etc.)
     stats_call = teamdashboardbygeneralsplits.TeamDashboardByGeneralSplits(
         team_id=team_id,
         per_mode_detailed='PerGame',
-        season='2025-26'
+        season=season
     )
-    
-    # 3. Get the "Overall" data frame
-    # This endpoint returns multiple tables; index [0] is the main season stats
-    df = stats_call.get_data_frames()[0]
+    performance_df = stats_call.get_data_frames()[0]
+    perf_row = performance_df.iloc[0]
 
-    # 4. Extract and return the specific stats you wanted
-    # We return it as a dictionary for easy use in a web app
-    stats_row = df.iloc[0] # There is only one row in the Overall table
+    # 3. Fetch Standings (Record, Rank)
+    standings_call = leaguestandingsv3.LeagueStandingsV3(season=season)
+    standings_df = standings_call.get_data_frames()[0]
     
+    # Filter the standings table for our specific team
+    team_standings = standings_df[standings_df['TeamID'] == team_id].iloc[0]
+
+    print("Get Team Stats called")
+    # 4. Combine and Return
     return {
         "Team": team_search[0]['full_name'],
-        "GP": stats_row['GP'],
-        "PPG": stats_row['PTS'],
-        "OPP_PPG": stats_row['OPP_PTS'],
-        "FG_PCT": stats_row['FG_PCT'],
-        "FG3_PCT": stats_row['FG3_PCT'],
-        "PLUS_MINUS": stats_row['PLUS_MINUS']
+        "Record": f"{team_standings['WINS']}-{team_standings['LOSSES']}",
+        "Win_PCT": team_standings['WinPCT'],
+        "Conference": team_standings['Conference'],
+        "Rank": f"{team_standings['PlayoffRank']} in {team_standings['Conference']}",
+        "GP": perf_row['GP'],
+        "PPG": perf_row['PTS'],
+        "OPP_PPG": round(perf_row['PTS'] - perf_row['PLUS_MINUS'], 1),
+        "FG_PCT": perf_row['FG_PCT'],
+        "PLUS_MINUS": perf_row['PLUS_MINUS']
     }
 
 def get_live_standings():
-    # 1. Fetch official standings (Seeding, W-L, L10)
+    # 1. Fetch official standings
     standings = leaguestandingsv3.LeagueStandingsV3(season='2025-26').get_data_frames()[0]
     
-    # 2. Fetch team performance stats (PPG, FG%, etc.)
-    # We add a small sleep to avoid rate limiting
     time.sleep(1)
+    # 2. Fetch team performance stats
     stats = leaguedashteamstats.LeagueDashTeamStats(season='2025-26').get_data_frames()[0]
+
+    # --- DEBUGGING TIP ---
+    # If it fails again, uncomment the line below to see all valid column names:
+    # print(stats.columns.tolist()) 
+
+    # 3. Clean Standings
+    standings_clean = standings[['TeamID', 'TeamName', 'Conference', 'PlayoffRank', 'WINS', 'LOSSES']]
     
-    # 3. Merge them on TeamID
-    # We select only the columns we need for a clean display
-    standings_clean = standings[['TeamID', 'TeamName', 'Conference', 'PlayoffRank', 'WINS', 'LOSSES', 'WinPCT']]
-    stats_clean = stats[['GP', 'PTS', 'OPP_PTS', 'FG_PCT', 'FG3_PCT', 'PLUS_MINUS']]
+    # 4. Clean Stats (REMOVED 'OPP_PTS' from the selection list)
+    stats_clean = stats[['TEAM_ID', 'GP', 'PTS', 'FG_PCT', 'FG3_PCT', 'PLUS_MINUS']].copy()
     
+    # 5. Calculate Opponent PPG manually
+    stats_clean['OPP_PTS'] = stats_clean['PTS'] - stats_clean['PLUS_MINUS']
+    
+    # 6. Merge
     final_df = pd.merge(standings_clean, stats_clean, left_on='TeamID', right_on='TEAM_ID')
     
-    # Sort by Conference and Rank
-    return final_df.sort_values(['Conference', 'PlayoffRank'])
+    # Sort and convert to Markdown for your React table
+    final_df = pd.merge(standings_clean, stats_clean, left_on='TeamID', right_on='TEAM_ID')
+    
+    # 7. Split into two DataFrames based on Conference
+    east_df = final_df[final_df['Conference'] == 'East'].sort_values('PlayoffRank')
+    west_df = final_df[final_df['Conference'] == 'West'].sort_values('PlayoffRank')
+
+    # 8. Return them as separate keys in the same JSON object
+    return {
+        "east": "### 🏀 Eastern Conference\n" + east_df.to_markdown(index=False),
+        "west": "### 🏀 Western Conference\n" + west_df.to_markdown(index=False)
+    }

@@ -7,13 +7,14 @@ from langchain_openai import ChatOpenAI
 from langchain.agents import create_agent
 from langchain_core.tools import Tool
 from dotenv import load_dotenv
-from .nba_data import getPlayerStats
+from nba_data import getPlayerStats
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
 from pydantic import BaseModel
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.runnables.history import GetSessionHistoryCallable
+from nba_data import getTeamStats
+from nba_data import get_live_standings
 
 load_dotenv()
 
@@ -23,22 +24,34 @@ llm_langchain = ChatOpenAI(model='gpt-4o-mini') # initializes the llm that langc
 #index = VectorStoreIndex.from_documents(documents) # indexes the data
 
 
-df_stats = pd.read_csv("./src/data/Player Per Game.csv")
+df_stats = pd.read_csv("./data/Player Per Game.csv")
 
-query_engine = PandasQueryEngine(df=df_stats,verbose = True) # makes the data a query engine
+team_df_stats= pd.read_csv("./data/Team Stats Per Game.csv")
+
+team_query_engine = PandasQueryEngine(df=team_df_stats, verbose = True) # query engine for the team stats
+player_query_engine = PandasQueryEngine(df=df_stats,verbose = True) # makes the data a query engine
 
 tools = [ # this wraps the llamaindex database into a tool that langchain can use
     Tool(
         name="NBA_Player_Database",
-        func=lambda q: str(query_engine.query(q)),
+        func=lambda q: str(player_query_engine.query(q)),
         description="Useful for when you need to answer questions about NBA player stats from past seasons, 2024-2025 season and before"
+    ),
+    Tool(
+        name="NBA_Team_Database",
+        func=lambda q: str(team_query_engine.query(q)),
+        description="Useful for when you need to answer questions about NBA team stats from past seasons, 2024-2025 season and before"
     ),
     Tool(
         name="Current_NBA_Player_Database",
         func=getPlayerStats,
         description="Useful for when you need to answer questions regarding NBA Player stats for this current year of NBA, the 2025-2026 NBA Season."
+    ),
+    Tool(
+        name="Current_NBA_Team_Database",
+        func=getTeamStats,
+        description="Useful for when you need to answer questions regarding NBA Team stats for this current year of NBA, the 2025-2026 NBA Season."
     )
-    # add tool for team stuff
 ]
 
 message_history = ChatMessageHistory()
@@ -81,3 +94,8 @@ async def handle_chat(input:ChatMessage): # takes in dictionary with {message : 
     ai_reply = response['messages'][-1].content
     message_history.add_ai_message(ai_reply)
     return {"reply": ai_reply}
+
+@app.get("/standings")
+async def handle_standings():
+    df = get_live_standings()
+    return df
