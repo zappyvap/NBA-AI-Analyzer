@@ -4,6 +4,7 @@ from nba_api.stats.static import teams
 from nba_api.stats.endpoints import leaguedashteamstats
 from nba_api.stats.endpoints import leaguestandingsv3
 from nba_api.stats.endpoints import teamdashboardbygeneralsplits
+from nba_api.stats.endpoints import leagueleaders
 import pandas as pd
 import time
 
@@ -92,8 +93,31 @@ def get_live_standings():
     east_df = final_df[final_df['Conference'] == 'East'].sort_values('PlayoffRank')
     west_df = final_df[final_df['Conference'] == 'West'].sort_values('PlayoffRank')
 
+    final_east_df = east_df.drop(columns=['TeamID','TEAM_ID'])
+    final_west_df = west_df.drop(columns=['TeamID','TEAM_ID'])
     # 8. Return them as separate keys in the same JSON object
     return {
-        "east": "### 🏀 Eastern Conference\n" + east_df.to_markdown(index=False),
-        "west": "### 🏀 Western Conference\n" + west_df.to_markdown(index=False)
+        "east": "### 🏀 Eastern Conference\n" + final_east_df.to_markdown(index=False),
+        "west": "### 🏀 Western Conference\n" + final_west_df.to_markdown(index=False)
     }
+
+def get_stat_leaders():
+    # 1. Fetch all leaders in one go (sorted by PTS by default)
+    # per_mode48='PerGame' is key to getting PPG/APG instead of totals
+    leaders = leagueleaders.LeagueLeaders(
+        per_mode48='PerGame', 
+        season='2025-26'
+    ).get_data_frames()[0]
+
+    # 2. Use Pandas logic to create sub-lists without re-calling the API
+    # We take the top 10 for each category from the same 'leaders' DataFrame
+    categories = {
+        "pts": leaders.sort_values('PTS', ascending=False).head(10)[['PLAYER', 'TEAM', 'PTS']],
+        "ast": leaders.sort_values('AST', ascending=False).head(10)[['PLAYER', 'TEAM', 'AST']],
+        "reb": leaders.sort_values('REB', ascending=False).head(10)[['PLAYER', 'TEAM', 'REB']],
+        "stl": leaders.sort_values('STL', ascending=False).head(10)[['PLAYER', 'TEAM', 'STL']],
+        "blk": leaders.sort_values('BLK', ascending=False).head(10)[['PLAYER', 'TEAM', 'BLK']]
+    }
+
+    # 3. Convert them to a format your React frontend can easily map over
+    return {cat: df.to_dict(orient='records') for cat, df in categories.items()}

@@ -15,6 +15,7 @@ from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.runnables.history import GetSessionHistoryCallable
 from nba_data import getTeamStats
 from nba_data import get_live_standings
+from nba_data import get_stat_leaders
 
 load_dotenv()
 
@@ -52,6 +53,7 @@ tools = [ # this wraps the llamaindex database into a tool that langchain can us
         func=getTeamStats,
         description="Useful for when you need to answer questions regarding NBA Team stats for this current year of NBA, the 2025-2026 NBA Season."
     )
+    # need to add a tool for a specific day bc ai is using year tool for "last night" questions
 ]
 
 message_history = ChatMessageHistory()
@@ -99,3 +101,8 @@ async def handle_chat(input:ChatMessage): # takes in dictionary with {message : 
 async def handle_standings():
     df = get_live_standings()
     return df
+
+@app.get("/league-leaders")
+async def handle_league_leaders():
+    data = get_stat_leaders()
+    return data
