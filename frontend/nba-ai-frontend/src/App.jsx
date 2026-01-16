@@ -13,6 +13,7 @@ const App = () => {
   const scrollRef = useRef(null);
   const location = useLocation();
   const [leaderboards, setLeaderboards] = useState(null);
+  const [activeView, setActiveView] = useState('chat');
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });

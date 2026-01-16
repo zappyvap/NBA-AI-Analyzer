@@ -5,6 +5,8 @@ from nba_api.stats.endpoints import leaguedashteamstats
 from nba_api.stats.endpoints import leaguestandingsv3
 from nba_api.stats.endpoints import teamdashboardbygeneralsplits
 from nba_api.stats.endpoints import leagueleaders
+from nba_api.stats.endpoints import playergamelog
+from langchain.tools import tool
 import pandas as pd
 import time
 
@@ -121,3 +123,36 @@ def get_stat_leaders():
 
     # 3. Convert them to a format your React frontend can easily map over
     return {cat: df.to_dict(orient='records') for cat, df in categories.items()}
+
+@tool
+def get_player_stats_on_date(player_name, game_date,season):
+    """
+    Fetches NBA player stats for a specific date.
+    player_name: Full name of the player.
+    game_date: The date of the game in YYYY-MM-DD format.
+    season: The season the game took place in. Format in the formate of YYYY-YY; example 2025-26
+    """
+    # 1. Get Player ID from name
+    nba_players = players.find_players_by_full_name(player_name)
+    if not nba_players:
+        return f"Player '{player_name}' not found."
+    
+    player_id = nba_players[0]['id']
+    
+    # 2. Fetch the game log for the current season
+    # Note: You may need to adjust the 'season' parameter dynamically 
+    log = playergamelog.PlayerGameLog(player_id=player_id, season=season)
+    df = log.get_data_frames()[0]
+    
+    # 3. Filter the results for the specific date
+    # The API date format in the dataframe is usually 'MMM DD, YYYY' (e.g. 'DEC 25, 2023')
+    # For a simple match, we convert our input to a datetime object
+    df['GAME_DATE'] = pd.to_datetime(df['GAME_DATE'])
+    target_date = pd.to_datetime(game_date)
+    
+    stats = df[df['GAME_DATE'] == target_date]
+    
+    if stats.empty:
+        return f"No game found for {player_name} on {game_date}."
+    
+    return stats.to_dict(orient='records')[0]

@@ -13,3 +13,4 @@ fastapi
 uvicorn
 langchain_community
 tabulate
+xgboost
