@@ -6,7 +6,7 @@ import remarkGfm from 'remark-gfm';
 
 const App = () => {
   const [messages, setMessages] = useState([
-    { id: 1, text: "Welcome to the Arena. I'm HoopsAI. Ask me about NBA stats or game analysis!", sender: 'bot' }
+    { id: 1, text: "Welcome to the Arena. I'm HoopsAI. Ask me about NBA stats or past games!", sender: 'bot' }
   ]);
   const [input, setInput] = useState('');
   const [standingsData, setStandingsData] = useState({ east: '', west: '' });
@@ -100,7 +100,7 @@ const App = () => {
       <aside style={s.sidebar}>
         <div style={s.logoSection}>
           <div style={s.logoIcon}><Zap size={20} /></div>
-          <span style={s.logoText}>HOOPS.BOX</span>
+          <span style={s.logoText}>HOOPS.AI</span>
         </div>
         <div style={{ color: '#64748b', fontSize: '0.7rem', letterSpacing: '2px', fontWeight: 'bold', marginBottom: '16px' }}>ANALYTICS</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>

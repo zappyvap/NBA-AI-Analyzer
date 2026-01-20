@@ -129,7 +129,7 @@ def get_player_stats_on_date(player_name, game_date,season):
     """
     Fetches NBA player stats for a specific date.
     player_name: Full name of the player.
-    game_date: The date of the game in YYYY-MM-DD format.
+    game_date: The date of the game in YYYY-MM-DD format. 
     season: The season the game took place in. Format in the formate of YYYY-YY; example 2025-26
     """
     # 1. Get Player ID from name
@@ -148,6 +148,7 @@ def get_player_stats_on_date(player_name, game_date,season):
     # The API date format in the dataframe is usually 'MMM DD, YYYY' (e.g. 'DEC 25, 2023')
     # For a simple match, we convert our input to a datetime object
     df['GAME_DATE'] = pd.to_datetime(df['GAME_DATE'])
+    print(game_date)
     target_date = pd.to_datetime(game_date)
     
     stats = df[df['GAME_DATE'] == target_date]

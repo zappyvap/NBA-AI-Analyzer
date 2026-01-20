@@ -1,7 +1,7 @@
 import datetime
 import pandas as pd
 import os
-from llama_index.core import VectorStoreIndex,SimpleDirectoryReader,Settings
+from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings
 from llama_index.llms.openai import OpenAI
 from llama_index.experimental.query_engine import PandasQueryEngine
 from langchain_openai import ChatOpenAI
@@ -13,7 +13,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from langchain_community.chat_message_histories import ChatMessageHistory
-from langchain_core.runnables.history import GetSessionHistoryCallable
 from nba_data import getTeamStats
 from nba_data import get_live_standings
 from nba_data import get_stat_leaders
@@ -21,54 +20,50 @@ from nba_data import get_player_stats_on_date
 
 load_dotenv()
 
-Settings.llm=OpenAI(model="gpt-4o-mini") # initializes the llm that llamaindex uses
-llm_langchain = ChatOpenAI(model='gpt-4o-mini') # initializes the llm that langchain uses
-#documents = SimpleDirectoryReader('./backend/src/data').load_data() # loads data for llamaindex to use
-#index = VectorStoreIndex.from_documents(documents) # indexes the data
+# Global configurations
+Settings.llm = OpenAI(model="gpt-4o-mini")
+llm_langchain = ChatOpenAI(model='gpt-4o-mini')
 
-
+# Load DataFrames
 df_stats = pd.read_csv("./data/Player Per Game.csv")
+team_df_stats = pd.read_csv("./data/Team Stats Per Game.csv")
 
-team_df_stats= pd.read_csv("./data/Team Stats Per Game.csv")
+# Initialize Query Engines
+team_query_engine = PandasQueryEngine(df=team_df_stats, verbose=True)
+player_query_engine = PandasQueryEngine(df=df_stats, verbose=True)
 
-team_query_engine = PandasQueryEngine(df=team_df_stats, verbose = True) # query engine for the team stats
-player_query_engine = PandasQueryEngine(df=df_stats,verbose = True) # makes the data a query engine for players
-
-tools = [ # this wraps the llamaindex database into a tool that langchain can use
+# Define Tools with updated descriptions to avoid date anchoring
+tools = [
     Tool(
         name="NBA_Player_Database",
-        func=lambda q: str(player_query_engine.query(q)),#llamaindex engine
-        description="Useful for when you need to answer questions about NBA player stats from past seasons, 2024-2025 season and before"
+        func=lambda q: str(player_query_engine.query(q)),
+        description="Useful for when you need to answer questions about NBA player stats from historical or past completed seasons."
     ),
     Tool(
         name="NBA_Team_Database",
-        func=lambda q: str(team_query_engine.query(q)),#llamaindex engine
-        description="Useful for when you need to answer questions about NBA team stats from past seasons, 2024-2025 season and before"
+        func=lambda q: str(team_query_engine.query(q)),
+        description="Useful for when you need to answer questions about NBA team stats from historical or past completed seasons."
     ),
     Tool(
         name="Current_NBA_Player_Database",
-        func=getPlayerStats,#backend function
-        description="Useful for when you need to answer questions regarding NBA Player stats for this current year of NBA, the 2025-2026 NBA Season."
+        func=getPlayerStats,
+        description="Useful for when you need to answer questions regarding NBA Player stats for the current active NBA season."
     ),
     Tool(
         name="Current_NBA_Team_Database",
-        func=getTeamStats,#backend function
-        description="Useful for when you need to answer questions regarding NBA Team stats for this current year of NBA, the 2025-2026 NBA Season."
+        func=getTeamStats,
+        description="Useful for when you need to answer questions regarding NBA Team stats for the current active NBA season."
     ),
     get_player_stats_on_date
-    
 ]
 
+# Note: message_history remains global for the session, 
+# but will still clear on server restart unless moved to a database.
 message_history = ChatMessageHistory()
-today = datetime.datetime.now().strftime("%Y-%m-%d")
-#this just creates the langchain agent with the llm it needs and the tools
-agent = create_agent(tools=tools, model=llm_langchain, system_prompt="You are a helpful professional NBA analyst. Answer the user's questions using the provided tools. Use the chat history to maintain context. Today is {today}")
-
 
 app = FastAPI()
 
-
-origins = [ # will need to add the url for the rendering site
+origins = [
     "http://localhost:5174",
     "http://localhost:5173"
 ]
@@ -76,27 +71,37 @@ origins = [ # will need to add the url for the rendering site
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials = True,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
-#print("Agent Response Keys:", response.keys())
-#print(response["messages"][-1].content)
-
 class ChatMessage(BaseModel):
-    message:str
+    message: str
 
 @app.post("/chat")
-async def handle_chat(input:ChatMessage): # takes in dictionary with {message : "___"} as the typing
+async def handle_chat(input: ChatMessage):
     query = input.message
 
+    # REFRESH DATE AND AGENT ON EVERY REQUEST
+    # This prevents the "Today is March 24th" or "Yesterday is in 2023" errors.
+    today_str = datetime.datetime.now().strftime("%Y-%m-%d")
+    
+    # Re-initialize the agent inside the route to inject the fresh date
+    current_agent = create_agent(
+        tools=tools, 
+        model=llm_langchain, 
+        system_prompt=f"You are a helpful professional NBA analyst. Answer the user's questions using the provided tools. Use the chat history to maintain context. Today is {today_str}"
+    )
+
+    # Manage History
     message_history.add_user_message(query)
     history_messages = message_history.messages
 
-    response = agent.invoke({"messages": history_messages})
+    # Invoke the freshly created agent
+    response = current_agent.invoke({"messages": history_messages})
     ai_reply = response['messages'][-1].content
+    
     message_history.add_ai_message(ai_reply)
     return {"reply": ai_reply}
 
