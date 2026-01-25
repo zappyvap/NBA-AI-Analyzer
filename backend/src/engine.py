@@ -57,18 +57,18 @@ tools = [
     get_player_stats_on_date
 ]
 
-# Note: message_history remains global for the session, 
-# but will still clear on server restart unless moved to a database.
+# used for storage of the previous messages
 message_history = ChatMessageHistory()
 
 app = FastAPI()
 
-origins = [
+origins = [ # viable URLS
     "http://localhost:5174",
-    "http://localhost:5173"
+    "http://localhost:5173",
+    "https://nba-ai-analyzer-frontend.onrender.com"
 ]
 
-app.add_middleware(
+app.add_middleware( # CORS stuff
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,

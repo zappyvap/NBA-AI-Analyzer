@@ -6,12 +6,26 @@ from nba_api.stats.endpoints import leaguestandingsv3
 from nba_api.stats.endpoints import teamdashboardbygeneralsplits
 from nba_api.stats.endpoints import leagueleaders
 from nba_api.stats.endpoints import playergamelog
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
+from nbainjuries import injury
+from datetime import datetime
 from langchain.tools import tool
 import pandas as pd
 import time
+import requests
+import os
+from bs4 import BeautifulSoup
 
 # function for getting player stats
-def getPlayerStats(player_name): 
+def getPlayerStats(player_name):
+    """
+    Docstring for getPlayerStats
+    
+    :param player_name: A string of the player's name ex. "LeBron James", "Stephen Curry" ...
+    """
     if not player_name:
         return "Player could not be found"
     player = players.find_players_by_full_name(player_name)
@@ -21,7 +35,95 @@ def getPlayerStats(player_name):
     career = playercareerstats.PlayerCareerStats(player_id=player_id)
     df = career.get_data_frames()[0]
     print("Using Player Stats")
-    return df.to_string() #easier for ai to read
+    current_season_df = df[df['SEASON_ID'] == '2025-26']
+    return current_season_df.to_string()
+    
+
+def getLastTenGames(player_name):
+    """
+    Docstring for getLastTenGames
+    
+    :param player_name: A string of the players name ex. "LeBron James"
+    """
+    if not player_name:
+        return "Player could not be found"
+    player = players.find_players_by_full_name(player_name)
+    if not player:
+        return "Player could not be found"
+    
+    player_id = player[0]['id']
+    gamelog = playergamelog.PlayerGameLog(player_id=player_id, season='2025-26')
+
+    df = gamelog.get_data_frames()[0]
+
+    last_10_games = df.head(10)
+
+    return last_10_games
+
+
+
+import requests
+from llama_index.core import VectorStoreIndex, download_loader
+from llama_index.readers.file import PyMuPDFReader
+
+# Step 1: Download the PDF to your project folder
+def download_nba_pdf():
+    # Example URL for today
+    url = "https://ak-static.cms.nba.com/referee/injury/Injury-Report_2026-01-25_12_00PM.pdf"
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    response = requests.get(url, headers=headers)
+    
+    with open("nba_injuries.pdf", "wb") as f:
+        f.write(response.content)
+
+# Step 2: Let LlamaIndex read it
+def create_injury_agent():
+    loader = PyMuPDFReader()
+    documents = loader.load_data(file_path="nba_injuries.pdf")
+    
+    # Create the index
+    index = VectorStoreIndex.from_documents(documents)
+    
+    # Create the Query Engine
+    query_engine = index.as_query_engine()
+    return query_engine
+
+def getInjuryReport(team_name):
+    download_nba_pdf()
+    engine = create_injury_agent()
+    response = engine.query(
+    f"Search the document for the section titled '{team_name}'. "
+    f"ONLY extract players listed directly under the '{team_name}' header. "
+    "If a player is listed under a different team (like the Magic or Heat), ignore them. "
+    "Return the results as a bulleted list with Player Name, Status, and Reason."
+    )
+    return response
+
+
+def getLastMatchup(player_name,team_abbr):
+    """
+    Finds the last game stats for a specific player against a specific opponent.
+    Args:
+        player_name: The full name of the NBA player.
+        team_abbr: The 3-letter abbreviation of the opponent team (e.g., 'DEN', 'LAL').
+    """
+    # 1. Get Player ID (Example: Jayson Tatum)
+    player = players.find_players_by_full_name(player_name)[0]
+    player_id = player['id']
+
+    # 2. Fetch game log for the current season
+    # '2024-25' for current, or '2023-24' for historical
+    gamelog = playergamelog.PlayerGameLog(player_id=player_id, season='2025-26')
+    df = gamelog.get_data_frames()[0]
+
+    # 3. Filter for a specific opponent (Example: Miami Heat 'MIA')
+    # Note: MATCHUP strings look like "BOS vs. MIA" or "BOS @ MIA"
+    vs_team_df = df[df['MATCHUP'].str.contains(team_abbr)]
+    if vs_team_df.empty:
+        return "No games played against this team yet"
+    
+    return vs_team_df
+
 
 # function for getting individual team stats
 def getTeamStats(team_name): 
