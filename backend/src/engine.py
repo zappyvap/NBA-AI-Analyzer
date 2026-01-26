@@ -1,6 +1,7 @@
 import datetime
 import pandas as pd
 import os
+import json
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings
 from llama_index.llms.openai import OpenAI
 from llama_index.experimental.query_engine import PandasQueryEngine
@@ -9,7 +10,7 @@ from langchain.agents import create_agent
 from langchain_core.tools import Tool
 from dotenv import load_dotenv
 from nba_data import getPlayerStats
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from langchain_community.chat_message_histories import ChatMessageHistory
@@ -17,6 +18,7 @@ from nba_data import getTeamStats
 from nba_data import get_live_standings
 from nba_data import get_stat_leaders
 from nba_data import get_player_stats_on_date
+from betting_engine import player_props
 
 load_dotenv()
 
@@ -79,6 +81,13 @@ app.add_middleware( # CORS stuff
 class ChatMessage(BaseModel):
     message: str
 
+class PlayerPropRequest(BaseModel):
+    playerName: str
+    playerTeam: str
+    propType: str
+    line: str
+    opponent: str
+
 @app.post("/chat")
 async def handle_chat(input: ChatMessage):
     query = input.message
@@ -114,3 +123,29 @@ async def handle_standings():
 async def handle_league_leaders():
     data = get_stat_leaders()
     return data
+
+@app.post("/player_props")
+async def handle_player_prop(request: PlayerPropRequest):
+    try:
+        result = player_props(
+            player_name=request.playerName,
+            player_team=request.playerTeam,
+            propLabel=request.propType,
+            line=request.line,
+            opponent=request.opponent
+        )
+        
+        # If player_props returns a JSON string, parse it
+        if isinstance(result, str):
+            result = json.loads(result)
+        
+        return result
+        
+    except json.JSONDecodeError as e:
+        print(f"JSON parsing error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to parse analysis result")
+    except Exception as e:
+        print(f"Error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))

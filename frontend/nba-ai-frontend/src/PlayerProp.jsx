@@ -9,6 +9,7 @@ export default function PlayerPropsAnalyzer() {
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState(null);
   const [error, setError] = useState(null);
+  const [playerTeam, setPlayerTeam] = useState('');
 
   const propTypes = [
     { value: 'points', label: 'Points' },
@@ -24,47 +25,47 @@ export default function PlayerPropsAnalyzer() {
   ];
 
   const analyzeProp = async () => {
-    if (!playerName || !line || !opponent) {
-      setError('Please fill in player name, prop line, and opponent');
-      return;
+  if (!playerName || !playerTeam || !line || !opponent) {
+    setError('Please fill in all required fields');
+    return;
+  }
+
+  setLoading(true);
+  setError(null);
+  setAnalysis(null);
+
+  try {
+    const propLabel = propTypes.find(p => p.value === propType)?.label || propType;
+    
+    const response = await fetch('http://localhost:8000/player_props', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        playerName,
+        playerTeam,
+        propType: propLabel,
+        line,
+        opponent
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to get analysis');
     }
 
-    setLoading(true);
-    setError(null);
-    setAnalysis(null);
+    const result = await response.json();
+    setAnalysis(result);
 
-    try {
-      const propLabel = propTypes.find(p => p.value === propType)?.label || propType;
-      
-      // Call your backend API endpoint
-      const response = await fetch('http://localhost:8000/player_props', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          playerName,
-          propType: propLabel,
-          line,
-          opponent
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to get analysis');
-      }
-
-      const result = await response.json();
-      setAnalysis(result);
-
-    } catch (err) {
-      console.error('Analysis error:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch (err) {
+    console.error('Analysis error:', err);
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const getConfidenceColor = (confidence) => {
     if (confidence === 'High') return 'text-green-400 bg-green-500/20 border-green-500';
@@ -86,32 +87,45 @@ export default function PlayerPropsAnalyzer() {
 
         {/* Input Form */}
         <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-xl p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-slate-300 text-sm font-semibold mb-2">
-                Player Name
-              </label>
-              <input
-                type="text"
-                value={playerName}
-                onChange={(e) => setPlayerName(e.target.value)}
-                placeholder="e.g., Luka Doncic"
-                className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-slate-300 text-sm font-semibold mb-2">
-                Opponent
-              </label>
-              <input
-                type="text"
-                value={opponent}
-                onChange={(e) => setOpponent(e.target.value)}
-                placeholder="e.g., Lakers"
-                className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
-              />
-            </div>
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+    <div>
+      <label className="block text-slate-300 text-sm font-semibold mb-2">
+        Player Name
+      </label>
+      <input
+        type="text"
+        value={playerName}
+        onChange={(e) => setPlayerName(e.target.value)}
+        placeholder="e.g., Luka Doncic"
+        className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+      />
+    </div>
+    
+        <div>
+          <label className="block text-slate-300 text-sm font-semibold mb-2">
+            Player Team
+          </label>
+          <input
+            type="text"
+            value={playerTeam}
+            onChange={(e) => setPlayerTeam(e.target.value)}
+            placeholder="e.g., Mavericks"
+            className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+          />
+        </div>
+        
+        <div>
+          <label className="block text-slate-300 text-sm font-semibold mb-2">
+            Opponent
+          </label>
+          <input
+            type="text"
+            value={opponent}
+            onChange={(e) => setOpponent(e.target.value)}
+            placeholder="e.g., Lakers"
+            className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+          />
+           </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">

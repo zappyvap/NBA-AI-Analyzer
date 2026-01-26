@@ -11,13 +11,14 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from nbainjuries import injury
-from datetime import datetime
+from datetime import datetime, timedelta
 from langchain.tools import tool
 import pandas as pd
 import time
 import requests
 import os
 from bs4 import BeautifulSoup
+
 
 # function for getting player stats
 def getPlayerStats(player_name):
@@ -68,13 +69,29 @@ from llama_index.readers.file import PyMuPDFReader
 
 # Step 1: Download the PDF to your project folder
 def download_nba_pdf():
-    # Example URL for today
-    url = "https://ak-static.cms.nba.com/referee/injury/Injury-Report_2026-01-25_12_00PM.pdf"
     headers = {'User-Agent': 'Mozilla/5.0'}
-    response = requests.get(url, headers=headers)
     
-    with open("nba_injuries.pdf", "wb") as f:
-        f.write(response.content)
+    # Try current date first, then go back in time if needed
+    for days_back in range(7):  # Try up to 7 days back
+        target_date = datetime.now() - timedelta(days=days_back)
+        date_str = target_date.strftime('%Y-%m-%d')
+        
+        # Try different times (12 PM, 5:30 PM are common NBA injury report times)
+        times = ['12_00PM', '05_30PM', '11_30AM']
+        
+        for time_str in times:
+            url = f"https://ak-static.cms.nba.com/referee/injury/Injury-Report_{date_str}_{time_str}.pdf"
+            
+            try:
+                response = requests.get(url, headers=headers, timeout=10)
+                
+                if response.status_code == 200:
+                    with open("nba_injuries.pdf", "wb") as f:
+                        f.write(response.content)
+                    print(f"Downloaded: {date_str} {time_str}")
+                    return True
+            except requests.RequestException:
+                continue
 
 # Step 2: Let LlamaIndex read it
 def create_injury_agent():
