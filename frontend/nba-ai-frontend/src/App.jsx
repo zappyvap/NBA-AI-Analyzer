@@ -3,6 +3,7 @@ import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Send, Trophy, Activity, MessageSquare, Zap, User, DollarSign, AlertCircle, Loader2, BarChart3, TrendingUp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm';
+import './app.css'
 
 // Player Props Analyzer Component
 // At the top of App.jsx, replace the old PlayerPropsAnalyzer with this:
@@ -12,257 +13,179 @@ const PlayerPropsAnalyzer = () => {
   const [propType, setPropType] = useState('points');
   const [line, setLine] = useState('');
   const [opponent, setOpponent] = useState('');
+  const [playerTeam, setPlayerTeam] = useState('');
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState(null);
-  const [error, setError] = useState(null);
-  const [playerTeam, setPlayerTeam] = useState('');
 
   const propTypes = [
-    { value: 'points', label: 'Points' },
-    { value: 'rebounds', label: 'Rebounds' },
-    { value: 'assists', label: 'Assists' },
-    { value: 'threes', label: '3-Pointers Made' },
-    { value: 'pts+rebs+asts', label: 'Points + Rebounds + Assists' },
-    { value: 'pts+rebs', label: 'Points + Rebounds' },
-    { value: 'pts+asts', label: 'Points + Assists' },
-    { value: 'rebs+asts', label: 'Rebounds + Assists' },
-    { value: 'steals', label: 'Steals' },
-    { value: 'blocks', label: 'Blocks' },
+    'points',
+    'rebounds',
+    'assists',
+    'threes',
+    'steals',
+    'blocks',
+    'turnovers',
+    'pts+rebs+asts',
+    'pts+rebs',
+    'pts+asts',
+    'rebs+asts'
   ];
 
   const analyzeProp = async () => {
-    if (!playerName || !playerTeam || !line || !opponent) {
-      setError('Please fill in all required fields');
-      return;
-    }
-
     setLoading(true);
-    setError(null);
-    setAnalysis(null);
-
     try {
-      const propLabel = propTypes.find(p => p.value === propType)?.label || propType;
-      
       const response = await fetch('http://localhost:8000/player_props', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          playerName,
-          playerTeam,
-          propType: propLabel,
-          line,
-          opponent
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          playerName, 
+          playerTeam, 
+          propType,
+          line, 
+          opponent 
         })
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to get analysis');
-      }
-
       const result = await response.json();
       setAnalysis(result);
-
-    } catch (err) {
-      console.error('Analysis error:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); }
+    setLoading(false);
   };
 
-  const getConfidenceColor = (confidence) => {
-    if (confidence === 'High') return 'text-green-400 bg-green-500/20 border-green-500';
-    if (confidence === 'Medium') return 'text-yellow-400 bg-yellow-500/20 border-yellow-500';
-    return 'text-red-400 bg-red-500/20 border-red-500';
-  };
+  const confClass = analysis?.recommendation.confidence === 'High' ? 'high-conf' : 
+                   analysis?.recommendation.confidence === 'Medium' ? 'med-conf' : 'low-conf';
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2 flex items-center gap-3">
-            <User className="text-purple-500" size={36} />
-            NBA Player Props Analyzer
-          </h1>
-          <p className="text-slate-400">AI-powered analysis for player prop bets</p>
+    <div className="props-container">
+      <div className="props-max-width">
+        <div className="props-header">
+          <h1>EDGE <span style={{ color: '#ea580c' }}>FINDER</span></h1>
         </div>
 
-        {/* Input Form */}
-        <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-xl p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <div>
-              <label className="block text-slate-300 text-sm font-semibold mb-2">
-                Player Name
-              </label>
-              <input
-                type="text"
-                value={playerName}
-                onChange={(e) => setPlayerName(e.target.value)}
-                placeholder="e.g., Luka Doncic"
-                className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-slate-300 text-sm font-semibold mb-2">
-                Player Team
-              </label>
-              <input
-                type="text"
-                value={playerTeam}
-                onChange={(e) => setPlayerTeam(e.target.value)}
-                placeholder="e.g., Mavericks"
-                className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-slate-300 text-sm font-semibold mb-2">
-                Opponent
-              </label>
-              <input
-                type="text"
-                value={opponent}
-                onChange={(e) => setOpponent(e.target.value)}
-                placeholder="e.g., Lakers"
-                className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
-              />
+        <div className="betting-ticket">
+          <div className="ticket-field">
+            <label style={{ color: '#ea580c' }}>Player</label>
+            <input placeholder="Name" value={playerName} onChange={e => setPlayerName(e.target.value)} />
+          </div>
+          
+          <div className="ticket-field">
+            <label style={{ color: '#a78bfa' }}>Prop Type</label>
+            <select 
+              value={propType} 
+              onChange={e => setPropType(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '8px',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                background: '#1e293b',
+                color: '#e2e8f0',
+                fontSize: '1rem',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              {propTypes.map(type => (
+                <option key={type} value={type}>
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="ticket-field">
+            <label style={{ color: '#3b82f6' }}>Matchup</label>
+            <div style={{ display: 'flex', gap: '5px' }}>
+              <input placeholder="DAL" value={playerTeam} onChange={e => setPlayerTeam(e.target.value)} />
+              <input placeholder="LAL" value={opponent} onChange={e => setOpponent(e.target.value)} />
             </div>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-slate-300 text-sm font-semibold mb-2">
-                Prop Type
-              </label>
-              <select
-                value={propType}
-                onChange={(e) => setPropType(e.target.value)}
-                className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500"
-              >
-                {propTypes.map(type => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-slate-300 text-sm font-semibold mb-2">
-                Line (O/U)
-              </label>
-              <input
-                type="text"
-                value={line}
-                onChange={(e) => setLine(e.target.value)}
-                placeholder="e.g., 28.5"
-                className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
-              />
-            </div>
+          
+          <div className="ticket-field">
+            <label style={{ color: '#10b981' }}>Line</label>
+            <input placeholder="24.5" value={line} onChange={e => setLine(e.target.value)} />
           </div>
-
-          <button
-            onClick={analyzeProp}
-            disabled={loading}
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="animate-spin" size={20} />
-                Analyzing Prop...
-              </>
-            ) : (
-              <>
-                <BarChart3 size={20} />
-                Analyze Prop
-              </>
-            )}
+          
+          <button className="simulate-btn" onClick={analyzeProp}>
+            {loading ? 'Analyzing...' : 'Simulate'}
           </button>
         </div>
 
-        {/* Error */}
-        {error && (
-          <div className="bg-red-900/30 border border-red-500 rounded-lg p-4 mb-6 flex items-center gap-3">
-            <AlertCircle className="text-red-500" size={24} />
-            <p className="text-red-200">{error}</p>
-          </div>
-        )}
-
-        {/* Analysis Results */}
         {analysis && (
-          <div className="space-y-6">
-            {/* Recommendation Card */}
-            <div className={`border-2 rounded-xl p-6 ${getConfidenceColor(analysis.recommendation.confidence)}`}>
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h2 className="text-3xl font-bold">{analysis.recommendation.pick}</h2>
-                    <span className="text-lg opacity-75">{line}</span>
-                  </div>
-                  <p className="text-slate-300 mb-3">{analysis.recommendation.reasoning}</p>
+          <div className="result-grid">
+            <div className={`main-recommendation ${confClass}`}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div>
+                  <h2>{analysis.recommendation.pick}</h2>
+                  <p style={{ fontWeight: 'bold' }}>{line} {propType}</p>
                   {analysis.recommendation.projectedStat && (
-                    <div className="inline-block bg-slate-900/50 px-4 py-2 rounded-lg">
-                      <span className="text-xs font-semibold opacity-75">PROJECTED: </span>
-                      <span className="text-xl font-bold">{analysis.recommendation.projectedStat}</span>
-                    </div>
+                    <p style={{ fontSize: '0.9rem', color: '#cbd5e1', marginTop: '5px' }}>
+                      Projected: {analysis.recommendation.projectedStat}
+                    </p>
                   )}
                 </div>
-                <div className="text-right ml-4">
-                  <div className="text-xs font-semibold mb-1">CONFIDENCE</div>
-                  <div className="text-3xl font-bold">{analysis.recommendation.confidence}</div>
+                <div className="confidence-chip">
+                  <p style={{ fontSize: '10px', fontWeight: '900', margin: 0 }}>CONFIDENCE</p>
+                  <p style={{ fontSize: '2rem', fontWeight: '900', margin: 0 }}>{analysis.recommendation.confidence}</p>
                 </div>
               </div>
+              <p style={{ color: '#e2e8f0', fontSize: '1.2rem', marginTop: '20px' }}>{analysis.recommendation.reasoning}</p>
             </div>
 
-            {/* Player Form & Matchup */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
-                <h3 className="text-purple-400 font-bold mb-3 flex items-center gap-2">
-                  <TrendingUp size={20} />
-                  Player Form
+            {/* Player Form Section */}
+            {analysis.playerForm && (
+              <div className="analysis-card">
+                <h3 style={{ color: '#ea580c', marginBottom: '15px', fontSize: '1.1rem', fontWeight: '700' }}>
+                  PLAYER FORM
                 </h3>
-                <p className="text-slate-300 text-sm leading-relaxed">{analysis.playerForm}</p>
+                <p style={{ color: '#e2e8f0', lineHeight: '1.6' }}>{analysis.playerForm}</p>
               </div>
+            )}
 
-              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
-                <h3 className="text-blue-400 font-bold mb-3 flex items-center gap-2">
-                  <BarChart3 size={20} />
-                  Matchup Analysis
+            {/* Matchup Analysis Section */}
+            {analysis.matchupAnalysis && (
+              <div className="analysis-card">
+                <h3 style={{ color: '#3b82f6', marginBottom: '15px', fontSize: '1.1rem', fontWeight: '700' }}>
+                  MATCHUP ANALYSIS
                 </h3>
-                <p className="text-slate-300 text-sm leading-relaxed">{analysis.matchupAnalysis}</p>
+                <p style={{ color: '#e2e8f0', lineHeight: '1.6' }}>{analysis.matchupAnalysis}</p>
               </div>
-            </div>
+            )}
 
-            {/* Recent Trends */}
-            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
-              <h3 className="text-white font-bold mb-3">Recent Trends</h3>
-              <p className="text-slate-300 text-sm leading-relaxed">{analysis.trends}</p>
-            </div>
-
-            {/* Key Factors */}
-            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
-              <h3 className="text-white font-bold mb-3">Key Factors to Consider</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {analysis.keyFactors.map((factor, idx) => (
-                  <div key={idx} className="flex items-start gap-2 bg-slate-700/30 p-3 rounded-lg">
-                    <span className="text-purple-500 mt-1">•</span>
-                    <span className="text-slate-300 text-sm">{factor}</span>
-                  </div>
-                ))}
+            {/* Key Factors Section */}
+            {analysis.keyFactors && analysis.keyFactors.length > 0 && (
+              <div className="analysis-card">
+                <h3 style={{ color: '#10b981', marginBottom: '15px', fontSize: '1.1rem', fontWeight: '700' }}>
+                  KEY FACTORS
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {analysis.keyFactors.map((factor, idx) => (
+                    <div key={idx} style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '10px',
+                      color: '#e2e8f0' 
+                    }}>
+                      <span style={{ 
+                        color: '#10b981', 
+                        fontWeight: 'bold', 
+                        fontSize: '1.2rem' 
+                      }}>•</span>
+                      <span>{factor}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Disclaimer */}
-            <div className="bg-orange-900/20 border border-orange-500/50 rounded-lg p-4">
-              <p className="text-orange-200 text-xs">
-                ⚠️ <strong>Disclaimer:</strong> This analysis is for entertainment purposes only. Sports betting involves risk. Please gamble responsibly.
-              </p>
-            </div>
+            {/* Trends Section */}
+            {analysis.trends && (
+              <div className="analysis-card">
+                <h3 style={{ color: '#a78bfa', marginBottom: '15px', fontSize: '1.1rem', fontWeight: '700' }}>
+                  RECENT TRENDS
+                </h3>
+                <p style={{ color: '#e2e8f0', lineHeight: '1.6' }}>{analysis.trends}</p>
+              </div>
+            )}
           </div>
         )}
       </div>

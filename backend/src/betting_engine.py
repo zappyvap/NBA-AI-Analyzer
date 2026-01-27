@@ -22,6 +22,9 @@ def player_props(player_name, player_team, propLabel, opponent, line):
     Prop: {propLabel} Over/Under {line}
     Opponent: {opponent}
     
+
+    If Prop is more than one category, ex. "Pts+reb+ast" that means a combination of the 3 is the bet.
+
     DATA:
     Player Season Stats: {player_stats}
     Player Last 10 Games: {last_ten}
