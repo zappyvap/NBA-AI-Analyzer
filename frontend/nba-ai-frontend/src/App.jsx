@@ -5,8 +5,6 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm';
 import './app.css'
 
-// Player Props Analyzer Component
-// At the top of App.jsx, replace the old PlayerPropsAnalyzer with this:
 
 const PlayerPropsAnalyzer = () => {
   const [playerName, setPlayerName] = useState('');
@@ -18,17 +16,13 @@ const PlayerPropsAnalyzer = () => {
   const [analysis, setAnalysis] = useState(null);
 
   const propTypes = [
-    'points',
-    'rebounds',
-    'assists',
-    'threes',
-    'steals',
-    'blocks',
-    'turnovers',
-    'pts+rebs+asts',
-    'pts+rebs',
-    'pts+asts',
-    'rebs+asts'
+    { value: 'points', label: 'Points' },
+    { value: 'rebounds', label: 'Rebounds' },
+    { value: 'assists', label: 'Assists' },
+    { value: 'threes', label: '3-Pointers' },
+    { value: 'steals', label: 'Steals' },
+    { value: 'blocks', label: 'Blocks' },
+    { value: 'pts+rebs+asts', label: 'PRA' },
   ];
 
   const analyzeProp = async () => {
@@ -37,13 +31,7 @@ const PlayerPropsAnalyzer = () => {
       const response = await fetch('http://localhost:8000/player_props', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          playerName, 
-          playerTeam, 
-          propType,
-          line, 
-          opponent 
-        })
+        body: JSON.stringify({ playerName, playerTeam, propType, line, opponent })
       });
       const result = await response.json();
       setAnalysis(result);
@@ -61,62 +49,84 @@ const PlayerPropsAnalyzer = () => {
           <h1>EDGE <span style={{ color: '#ea580c' }}>FINDER</span></h1>
         </div>
 
-        <div className="betting-ticket">
-          <div className="ticket-field">
-            <label style={{ color: '#ea580c' }}>Player</label>
-            <input placeholder="Name" value={playerName} onChange={e => setPlayerName(e.target.value)} />
+        <div className="betting-ticket" style={{ 
+          display: 'flex', 
+          flexDirection: 'row', 
+          alignItems: 'flex-end', 
+          gap: '8px', 
+          padding: '12px',
+          background: '#111114',
+          borderRadius: '16px',
+          border: '1px solid #2d2d30',
+          marginBottom: '32px'
+        }}>
+          <div className="ticket-field" style={{ flex: 2, minWidth: '120px' }}>
+            <label style={{ color: '#ea580c', fontSize: '10px', fontWeight: '900', marginBottom: '4px', display: 'block' }}>PLAYER</label>
+            <input 
+              placeholder="Name" 
+              value={playerName} 
+              onChange={e => setPlayerName(e.target.value)} 
+              style={{ width: '100%', background: 'transparent', border: 'none', color: 'white', fontWeight: 'bold', outline: 'none' }}
+            />
           </div>
           
-          <div className="ticket-field">
-            <label style={{ color: '#a78bfa' }}>Prop Type</label>
+          <div className="ticket-field" style={{ flex: 1.5, minWidth: '100px' }}>
+            <label style={{ color: '#a78bfa', fontSize: '10px', fontWeight: '900', marginBottom: '4px', display: 'block' }}>PROP</label>
             <select 
               value={propType} 
               onChange={e => setPropType(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px',
-                borderRadius: '8px',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                background: '#1e293b',
-                color: '#e2e8f0',
-                fontSize: '1rem',
-                cursor: 'pointer',
-                outline: 'none'
-              }}
+              style={{ background: 'transparent', border: 'none', color: 'white', fontWeight: 'bold', width: '100%', outline: 'none', cursor: 'pointer' }}
             >
               {propTypes.map(type => (
-                <option key={type} value={type}>
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
-                </option>
+                <option key={type.value} value={type.value} style={{ background: '#111114' }}>{type.label}</option>
               ))}
             </select>
           </div>
           
-          <div className="ticket-field">
-            <label style={{ color: '#3b82f6' }}>Matchup</label>
-            <div style={{ display: 'flex', gap: '5px' }}>
-              <input placeholder="DAL" value={playerTeam} onChange={e => setPlayerTeam(e.target.value)} />
-              <input placeholder="LAL" value={opponent} onChange={e => setOpponent(e.target.value)} />
-            </div>
+          <div className="ticket-field" style={{ flex: 1 }}>
+            <label style={{ color: '#3b82f6', fontSize: '10px', fontWeight: '900', marginBottom: '4px', display: 'block' }}>TEAM</label>
+            <input 
+              placeholder="DAL" 
+              value={playerTeam} 
+              onChange={e => setPlayerTeam(e.target.value)} 
+              style={{ width: '100%', background: 'transparent', border: 'none', color: 'white', fontWeight: 'bold', outline: 'none' }}
+            />
+          </div>
+
+          <div className="ticket-field" style={{ flex: 1 }}>
+            <label style={{ color: '#3b82f6', fontSize: '10px', fontWeight: '900', marginBottom: '4px', display: 'block' }}>OPP</label>
+            <input 
+              placeholder="LAL" 
+              value={opponent} 
+              onChange={e => setOpponent(e.target.value)} 
+              style={{ width: '100%', background: 'transparent', border: 'none', color: 'white', fontWeight: 'bold', outline: 'none' }}
+            />
           </div>
           
-          <div className="ticket-field">
-            <label style={{ color: '#10b981' }}>Line</label>
-            <input placeholder="24.5" value={line} onChange={e => setLine(e.target.value)} />
+          <div className="ticket-field" style={{ flex: 0.8 }}>
+            <label style={{ color: '#10b981', fontSize: '10px', fontWeight: '900', marginBottom: '4px', display: 'block' }}>LINE</label>
+            <input 
+              placeholder="24.5" 
+              value={line} 
+              onChange={e => setLine(e.target.value)} 
+              style={{ width: '100%', background: 'transparent', border: 'none', color: 'white', fontWeight: 'bold', outline: 'none' }}
+            />
           </div>
           
-          <button className="simulate-btn" onClick={analyzeProp}>
-            {loading ? 'Analyzing...' : 'Simulate'}
+          <button className="simulate-btn" onClick={analyzeProp} style={{ height: '42px', padding: '0 20px', marginLeft: '4px' }}>
+            {loading ? '...' : 'SIMULATE'}
           </button>
         </div>
 
+        {/* Analysis Results Display */}
         {analysis && (
           <div className="result-grid">
-            <div className={`main-recommendation ${confClass}`}>
+            {/* Main Recommendation Card */}
+            <div className={`main-recommendation ${confClass}`} style={{ gridColumn: '1 / -1' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <div>
                   <h2>{analysis.recommendation.pick}</h2>
-                  <p style={{ fontWeight: 'bold' }}>{line} {propType}</p>
+                  <p style={{ fontWeight: 'bold' }}>{line} {propType.toUpperCase()}</p>
                   {analysis.recommendation.projectedStat && (
                     <p style={{ fontSize: '0.9rem', color: '#cbd5e1', marginTop: '5px' }}>
                       Projected: {analysis.recommendation.projectedStat}
@@ -131,61 +141,45 @@ const PlayerPropsAnalyzer = () => {
               <p style={{ color: '#e2e8f0', fontSize: '1.2rem', marginTop: '20px' }}>{analysis.recommendation.reasoning}</p>
             </div>
 
-            {/* Player Form Section */}
-            {analysis.playerForm && (
-              <div className="analysis-card">
-                <h3 style={{ color: '#ea580c', marginBottom: '15px', fontSize: '1.1rem', fontWeight: '700' }}>
-                  PLAYER FORM
-                </h3>
-                <p style={{ color: '#e2e8f0', lineHeight: '1.6' }}>{analysis.playerForm}</p>
-              </div>
-            )}
-
-            {/* Matchup Analysis Section */}
-            {analysis.matchupAnalysis && (
-              <div className="analysis-card">
-                <h3 style={{ color: '#3b82f6', marginBottom: '15px', fontSize: '1.1rem', fontWeight: '700' }}>
-                  MATCHUP ANALYSIS
-                </h3>
-                <p style={{ color: '#e2e8f0', lineHeight: '1.6' }}>{analysis.matchupAnalysis}</p>
-              </div>
-            )}
-
-            {/* Key Factors Section */}
-            {analysis.keyFactors && analysis.keyFactors.length > 0 && (
-              <div className="analysis-card">
-                <h3 style={{ color: '#10b981', marginBottom: '15px', fontSize: '1.1rem', fontWeight: '700' }}>
-                  KEY FACTORS
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {analysis.keyFactors.map((factor, idx) => (
-                    <div key={idx} style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '10px',
-                      color: '#e2e8f0' 
-                    }}>
-                      <span style={{ 
-                        color: '#10b981', 
-                        fontWeight: 'bold', 
-                        fontSize: '1.2rem' 
-                      }}>•</span>
-                      <span>{factor}</span>
-                    </div>
-                  ))}
+            {/* Detailed Analysis Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', gridColumn: '1 / -1' }}>
+              {analysis.playerForm && (
+                <div className="analysis-card">
+                  <h3 style={{ color: '#ea580c', marginBottom: '15px', fontSize: '1.1rem', fontWeight: '700' }}>PLAYER FORM</h3>
+                  <p style={{ color: '#e2e8f0', lineHeight: '1.6' }}>{analysis.playerForm}</p>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Trends Section */}
-            {analysis.trends && (
-              <div className="analysis-card">
-                <h3 style={{ color: '#a78bfa', marginBottom: '15px', fontSize: '1.1rem', fontWeight: '700' }}>
-                  RECENT TRENDS
-                </h3>
-                <p style={{ color: '#e2e8f0', lineHeight: '1.6' }}>{analysis.trends}</p>
-              </div>
-            )}
+              {analysis.matchupAnalysis && (
+                <div className="analysis-card">
+                  <h3 style={{ color: '#3b82f6', marginBottom: '15px', fontSize: '1.1rem', fontWeight: '700' }}>MATCHUP ANALYSIS</h3>
+                  <p style={{ color: '#e2e8f0', lineHeight: '1.6' }}>{analysis.matchupAnalysis}</p>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', gridColumn: '1 / -1' }}>
+              {analysis.trends && (
+                <div className="analysis-card">
+                  <h3 style={{ color: '#a78bfa', marginBottom: '15px', fontSize: '1.1rem', fontWeight: '700' }}>RECENT TRENDS</h3>
+                  <p style={{ color: '#e2e8f0', lineHeight: '1.6' }}>{analysis.trends}</p>
+                </div>
+              )}
+
+              {analysis.keyFactors && analysis.keyFactors.length > 0 && (
+                <div className="analysis-card">
+                  <h3 style={{ color: '#10b981', marginBottom: '15px', fontSize: '1.1rem', fontWeight: '700' }}>KEY FACTORS</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {analysis.keyFactors.map((factor, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#e2e8f0' }}>
+                        <span style={{ color: '#10b981', fontWeight: 'bold', fontSize: '1.2rem' }}>•</span>
+                        <span>{factor}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -193,7 +187,7 @@ const PlayerPropsAnalyzer = () => {
   );
 };
 
-// Main App Component
+
 const App = () => {
   const [messages, setMessages] = useState([
     { id: 1, text: "Welcome to the Arena. I'm HoopsAI. Ask me about NBA stats or past games!", sender: 'bot' }

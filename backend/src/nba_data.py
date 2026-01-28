@@ -6,18 +6,11 @@ from nba_api.stats.endpoints import leaguestandingsv3
 from nba_api.stats.endpoints import teamdashboardbygeneralsplits
 from nba_api.stats.endpoints import leagueleaders
 from nba_api.stats.endpoints import playergamelog
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
-from nbainjuries import injury
 from datetime import datetime, timedelta
 from langchain.tools import tool
 import pandas as pd
 import time
 import requests
-import os
-from bs4 import BeautifulSoup
 
 
 # function for getting player stats
@@ -39,7 +32,7 @@ def getPlayerStats(player_name):
     current_season_df = df[df['SEASON_ID'] == '2025-26']
     return current_season_df.to_string()
     
-
+# function to get the last 10 games stats for a player
 def getLastTenGames(player_name):
     """
     Docstring for getLastTenGames
@@ -67,16 +60,15 @@ import requests
 from llama_index.core import VectorStoreIndex, download_loader
 from llama_index.readers.file import PyMuPDFReader
 
-# Step 1: Download the PDF to your project folder
+# helper function for the injury report function, this just gets the injury report pdf from the nba website
 def download_nba_pdf():
     headers = {'User-Agent': 'Mozilla/5.0'}
     
-    # Try current date first, then go back in time if needed
-    for days_back in range(7):  # Try up to 7 days back
+    for days_back in range(7):
         target_date = datetime.now() - timedelta(days=days_back)
         date_str = target_date.strftime('%Y-%m-%d')
         
-        # Try different times (12 PM, 5:30 PM are common NBA injury report times)
+        
         times = ['12_00PM', '05_30PM', '11_30AM']
         
         for time_str in times:
@@ -93,18 +85,17 @@ def download_nba_pdf():
             except requests.RequestException:
                 continue
 
-# Step 2: Let LlamaIndex read it
+# this is another injury report helper function, it gets the pdf using the other function and makes a llamaindex agent for it.
 def create_injury_agent():
     loader = PyMuPDFReader()
     documents = loader.load_data(file_path="nba_injuries.pdf")
     
-    # Create the index
     index = VectorStoreIndex.from_documents(documents)
     
-    # Create the Query Engine
     query_engine = index.as_query_engine()
     return query_engine
 
+# this function gets the injury report of a certain team
 def getInjuryReport(team_name):
     download_nba_pdf()
     engine = create_injury_agent()
@@ -116,7 +107,7 @@ def getInjuryReport(team_name):
     )
     return response
 
-
+# returns the stats of a player the last time they played a certain team
 def getLastMatchup(player_name,team_abbr):
     """
     Finds the last game stats for a specific player against a specific opponent.
@@ -124,17 +115,13 @@ def getLastMatchup(player_name,team_abbr):
         player_name: The full name of the NBA player.
         team_abbr: The 3-letter abbreviation of the opponent team (e.g., 'DEN', 'LAL').
     """
-    # 1. Get Player ID (Example: Jayson Tatum)
+
     player = players.find_players_by_full_name(player_name)[0]
     player_id = player['id']
 
-    # 2. Fetch game log for the current season
-    # '2024-25' for current, or '2023-24' for historical
     gamelog = playergamelog.PlayerGameLog(player_id=player_id, season='2025-26')
     df = gamelog.get_data_frames()[0]
 
-    # 3. Filter for a specific opponent (Example: Miami Heat 'MIA')
-    # Note: MATCHUP strings look like "BOS vs. MIA" or "BOS @ MIA"
     vs_team_df = df[df['MATCHUP'].str.contains(team_abbr)]
     if vs_team_df.empty:
         return "No games played against this team yet"
@@ -144,7 +131,7 @@ def getLastMatchup(player_name,team_abbr):
 
 # function for getting individual team stats
 def getTeamStats(team_name): 
-    # 1. Find the team
+
     team_search = teams.find_teams_by_full_name(team_name)
     if not team_search:
         return "Team could not be found"
@@ -152,7 +139,7 @@ def getTeamStats(team_name):
     team_id = team_search[0]['id']
     season = '2025-26'
 
-    # 2. Fetch Performance Stats (PPG, FG%, etc.)
+    
     stats_call = teamdashboardbygeneralsplits.TeamDashboardByGeneralSplits(
         team_id=team_id,
         per_mode_detailed='PerGame',
@@ -161,15 +148,14 @@ def getTeamStats(team_name):
     performance_df = stats_call.get_data_frames()[0]
     perf_row = performance_df.iloc[0]
 
-    # 3. Fetch Standings (Record, Rank)
+
     standings_call = leaguestandingsv3.LeagueStandingsV3(season=season)
     standings_df = standings_call.get_data_frames()[0]
     
-    # Filter the standings table for our specific team
+  
     team_standings = standings_df[standings_df['TeamID'] == team_id].iloc[0]
 
-    print("Get Team Stats called")
-    # 4. Combine and Return
+
     return {
         "Team": team_search[0]['full_name'],
         "Record": f"{team_standings['WINS']}-{team_standings['LOSSES']}",
@@ -183,6 +169,7 @@ def getTeamStats(team_name):
         "PLUS_MINUS": perf_row['PLUS_MINUS']
     }
 
+# this is the function that makes the standing tab work, just fetches the standings from the api
 def get_live_standings():
     # 1. Fetch official standings
     standings = leaguestandingsv3.LeagueStandingsV3(season='2025-26').get_data_frames()[0]
@@ -191,47 +178,38 @@ def get_live_standings():
     # 2. Fetch team performance stats
     stats = leaguedashteamstats.LeagueDashTeamStats(season='2025-26').get_data_frames()[0]
 
-    # --- DEBUGGING TIP ---
-    # If it fails again, uncomment the line below to see all valid column names:
-    # print(stats.columns.tolist()) 
 
-    # 3. Clean Standings
     standings_clean = standings[['TeamID', 'TeamName', 'Conference', 'PlayoffRank', 'WINS', 'LOSSES']]
-    
-    # 4. Clean Stats (REMOVED 'OPP_PTS' from the selection list)
+  
     stats_clean = stats[['TEAM_ID', 'GP', 'PTS', 'FG_PCT', 'FG3_PCT', 'PLUS_MINUS']].copy()
     
-    # 5. Calculate Opponent PPG manually
     stats_clean['OPP_PTS'] = stats_clean['PTS'] - stats_clean['PLUS_MINUS']
     
-    # 6. Merge
+
     final_df = pd.merge(standings_clean, stats_clean, left_on='TeamID', right_on='TEAM_ID')
     
-    # Sort and convert to Markdown for your React table
+ 
     final_df = pd.merge(standings_clean, stats_clean, left_on='TeamID', right_on='TEAM_ID')
-    
-    # 7. Split into two DataFrames based on Conference
+
     east_df = final_df[final_df['Conference'] == 'East'].sort_values('PlayoffRank')
     west_df = final_df[final_df['Conference'] == 'West'].sort_values('PlayoffRank')
 
     final_east_df = east_df.drop(columns=['TeamID','TEAM_ID'])
     final_west_df = west_df.drop(columns=['TeamID','TEAM_ID'])
-    # 8. Return them as separate keys in the same JSON object
+ 
     return {
         "east": "### 🏀 Eastern Conference\n" + final_east_df.to_markdown(index=False),
         "west": "### 🏀 Western Conference\n" + final_west_df.to_markdown(index=False)
     }
 
+# this function is the function that sets up the stat leaders tab
 def get_stat_leaders():
-    # 1. Fetch all leaders in one go (sorted by PTS by default)
-    # per_mode48='PerGame' is key to getting PPG/APG instead of totals
+  
     leaders = leagueleaders.LeagueLeaders(
         per_mode48='PerGame', 
         season='2025-26'
     ).get_data_frames()[0]
 
-    # 2. Use Pandas logic to create sub-lists without re-calling the API
-    # We take the top 10 for each category from the same 'leaders' DataFrame
     categories = {
         "pts": leaders.sort_values('PTS', ascending=False).head(10)[['PLAYER', 'TEAM', 'PTS']],
         "ast": leaders.sort_values('AST', ascending=False).head(10)[['PLAYER', 'TEAM', 'AST']],
@@ -240,9 +218,10 @@ def get_stat_leaders():
         "blk": leaders.sort_values('BLK', ascending=False).head(10)[['PLAYER', 'TEAM', 'BLK']]
     }
 
-    # 3. Convert them to a format your React frontend can easily map over
+ 
     return {cat: df.to_dict(orient='records') for cat, df in categories.items()}
 
+# a specific function for the chatbot that helps with users asking about 'yesterdays game' or a game on 'May 14th 2021'
 @tool
 def get_player_stats_on_date(player_name, game_date,season):
     """
@@ -251,21 +230,17 @@ def get_player_stats_on_date(player_name, game_date,season):
     game_date: The date of the game in YYYY-MM-DD format. 
     season: The season the game took place in. Format in the formate of YYYY-YY; example 2025-26
     """
-    # 1. Get Player ID from name
+    
     nba_players = players.find_players_by_full_name(player_name)
     if not nba_players:
         return f"Player '{player_name}' not found."
     
     player_id = nba_players[0]['id']
     
-    # 2. Fetch the game log for the current season
-    # Note: You may need to adjust the 'season' parameter dynamically 
+  
     log = playergamelog.PlayerGameLog(player_id=player_id, season=season)
     df = log.get_data_frames()[0]
     
-    # 3. Filter the results for the specific date
-    # The API date format in the dataframe is usually 'MMM DD, YYYY' (e.g. 'DEC 25, 2023')
-    # For a simple match, we convert our input to a datetime object
     df['GAME_DATE'] = pd.to_datetime(df['GAME_DATE'])
     print(game_date)
     target_date = pd.to_datetime(game_date)

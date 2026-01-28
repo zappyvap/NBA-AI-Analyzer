@@ -6,14 +6,14 @@ import re
 load_dotenv()
 
 def player_props(player_name, player_team, propLabel, opponent, line):
-    # Gather data directly
+    # get data from other functions
     player_stats = getPlayerStats(player_name)
     last_ten = getLastTenGames(player_name)
     opponent_stats = getTeamStats(opponent)
     opponent_injuries = getInjuryReport(opponent)
     player_team_injuries = getInjuryReport(player_team)
     
-    # Now create a prompt with the actual data
+    # prompt langchain with said data
     analysis_prompt = f"""
     Analyze this NBA player prop bet and return ONLY valid JSON (no other text, no markdown, no code blocks):
     

@@ -1,6 +1,5 @@
 import datetime
 import pandas as pd
-import os
 import json
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings
 from llama_index.llms.openai import OpenAI
@@ -22,9 +21,9 @@ from betting_engine import player_props
 
 load_dotenv()
 
-# Global configurations
-Settings.llm = OpenAI(model="gpt-4o-mini")
-llm_langchain = ChatOpenAI(model='gpt-4o-mini')
+
+Settings.llm = OpenAI(model="gpt-4o-mini") # sets up the model for llamaindex
+llm_langchain = ChatOpenAI(model='gpt-4o-mini') # sets up model for langchain agent
 
 # Load DataFrames
 df_stats = pd.read_csv("./data/Player Per Game.csv")
@@ -62,7 +61,7 @@ tools = [
 # used for storage of the previous messages
 message_history = ChatMessageHistory()
 
-app = FastAPI()
+app = FastAPI() # initializing the fastAPI server
 
 origins = [ # viable URLS
     "http://localhost:5174",
@@ -78,10 +77,10 @@ app.add_middleware( # CORS stuff
     allow_headers=["*"],
 )
 
-class ChatMessage(BaseModel):
+class ChatMessage(BaseModel): # basemodel for the chat messages
     message: str
-
-class PlayerPropRequest(BaseModel):
+ 
+class PlayerPropRequest(BaseModel): # basemodel for the player prop inputs
     playerName: str
     playerTeam: str
     propType: str
@@ -92,11 +91,9 @@ class PlayerPropRequest(BaseModel):
 async def handle_chat(input: ChatMessage):
     query = input.message
 
-    # REFRESH DATE AND AGENT ON EVERY REQUEST
-    # This prevents the "Today is March 24th" or "Yesterday is in 2023" errors.
     today_str = datetime.datetime.now().strftime("%Y-%m-%d")
     
-    # Re-initialize the agent inside the route to inject the fresh date
+    # re-initializing agent every chat message to help with date issues.
     current_agent = create_agent(
         tools=tools, 
         model=llm_langchain, 
@@ -107,7 +104,7 @@ async def handle_chat(input: ChatMessage):
     message_history.add_user_message(query)
     history_messages = message_history.messages
 
-    # Invoke the freshly created agent
+    
     response = current_agent.invoke({"messages": history_messages})
     ai_reply = response['messages'][-1].content
     
@@ -127,7 +124,7 @@ async def handle_league_leaders():
 @app.post("/player_props")
 async def handle_player_prop(request: PlayerPropRequest):
     try:
-        result = player_props(
+        result = player_props( # passing data to function
             player_name=request.playerName,
             player_team=request.playerTeam,
             propLabel=request.propType,
@@ -135,7 +132,7 @@ async def handle_player_prop(request: PlayerPropRequest):
             opponent=request.opponent
         )
         
-        # If player_props returns a JSON string, parse it
+        # parsing JSON
         if isinstance(result, str):
             result = json.loads(result)
         
