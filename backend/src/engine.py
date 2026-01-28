@@ -66,7 +66,7 @@ app = FastAPI() # initializing the fastAPI server
 origins = [ # viable URLS
     "http://localhost:5174",
     "http://localhost:5173",
-    "https://nba-ai-analyzer-frontend.onrender.com"
+    "https://nba-ai-analyzer-frontend.onrender.com",
 ]
 
 app.add_middleware( # CORS stuff

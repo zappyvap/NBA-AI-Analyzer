@@ -3,7 +3,8 @@ import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Send, Trophy, Activity, MessageSquare, Zap, User, DollarSign, AlertCircle, Loader2, BarChart3, TrendingUp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm';
-import './app.css'
+import './App.css'
+import { API_BASE_URL } from './config';
 
 
 const PlayerPropsAnalyzer = () => {
@@ -28,7 +29,7 @@ const PlayerPropsAnalyzer = () => {
   const analyzeProp = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8000/player_props', {
+      const response = await fetch(`${API_BASE_URL}/player_props`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ playerName, playerTeam, propType, line, opponent })
@@ -203,7 +204,7 @@ const App = () => {
   }, [messages, location.pathname]);
 
   const fetchLeaders = async () => {
-    const response = await fetch('http://localhost:8000/league-leaders');
+    const response = await fetch(`${API_BASE_URL}/league_leaders`);
     const data = await response.json();
     setLeaderboards(data);
   };
@@ -216,7 +217,7 @@ const App = () => {
     setStandingsData({ east: "Loading East...", west: "Loading West..." });
 
     try {
-      const response = await fetch('http://localhost:8000/standings');
+      const response = await fetch(`${API_BASE_URL}/standings`);
       const data = await response.json();
       setStandingsData({
         east: data.east,
@@ -244,7 +245,7 @@ const App = () => {
     setInput('');
 
     try {
-      const response = await fetch('http://localhost:8000/chat', {
+      const response = await fetch(`${API_BASE_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: input }), 
