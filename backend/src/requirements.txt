@@ -1,6 +1,7 @@
 langchain
 langgraph
 llama-index-core
+llama-index-readers-file
 langchain-openai
 llama-index-llms-openai
 llama-index-llms-langchain
@@ -14,3 +15,6 @@ uvicorn
 langchain_community
 tabulate
 polars
+openai
+pydantic
+pymupdf
