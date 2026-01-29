@@ -22,4 +22,4 @@ ENV PYTHONPATH=/app/backend/src
 EXPOSE 7860
 
 # Command to start your engine
-CMD ["uvicorn", "backend.src.engine:app", "--host", "0.0.0.0", "--port", "7860"]
+CMD ["uvicorn", "backend.src.engine:app", "--host", "0.0.0.0", "--port", "7860", "--proxy-headers"]
