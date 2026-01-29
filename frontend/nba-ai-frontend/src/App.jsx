@@ -40,8 +40,8 @@ const PlayerPropsAnalyzer = () => {
     setLoading(false);
   };
 
-  const confClass = analysis?.recommendation.confidence === 'High' ? 'high-conf' : 
-                   analysis?.recommendation.confidence === 'Medium' ? 'med-conf' : 'low-conf';
+  const confClass = analysis?.recommendation?.confidence === 'High' ? 'high-conf' : 
+                 analysis?.recommendation?.confidence === 'Medium' ? 'med-conf' : 'low-conf';
 
   return (
     <div className="props-container">

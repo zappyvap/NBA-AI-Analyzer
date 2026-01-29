@@ -169,7 +169,7 @@ def getTeamStats(team_name):
 def get_live_standings():
     # 1. Fetch official standings
     standings = fetch_nba_data(leaguestandingsv3.LeagueStandingsV3, season='2025-26')
-    time.sleep(1)
+    time.sleep(2.5)
     # 2. Fetch team performance stats
     stats = fetch_nba_data(leaguedashteamstats.LeagueDashTeamStats, season='2025-26')
 
