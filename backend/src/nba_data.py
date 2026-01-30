@@ -30,11 +30,12 @@ CUSTOM_HEADERS = {
 def fetch_nba_data(endpoint_class, **kwargs):
     for attempt in range(3):
         try:
-            # Using 60 second timeout and custom headers for stability on Hugging Face
-            return endpoint_class(**kwargs, headers=CUSTOM_HEADERS, timeout=60).get_data_frames()[0]
-        except ReadTimeout:
-            print(f"NBA API Timeout on attempt {attempt + 1}. Retrying...")
-            time.sleep(2)
+            # NBA API is picky; sometimes a shorter timeout per attempt 
+            # with more retries is better than one long 60s wait.
+            return endpoint_class(**kwargs, headers=CUSTOM_HEADERS, timeout=30).get_data_frames()[0]
+        except Exception as e:
+            print(f"Attempt {attempt + 1} failed: {e}")
+            time.sleep(5) # Increase sleep to 5s
     return None
 
 # function for getting player stats
@@ -167,34 +168,26 @@ def getTeamStats(team_name):
 
 # function for the standings tab
 def get_live_standings():
-    # 1. Fetch official standings
-    standings = fetch_nba_data(leaguestandingsv3.LeagueStandingsV3, season='2025-26')
-    time.sleep(2.5)
-    # 2. Fetch team performance stats
-    stats = fetch_nba_data(leaguedashteamstats.LeagueDashTeamStats, season='2025-26')
-
-    if standings is None or stats is None:
-        return {
-            "east": "### 🏀 Eastern Conference\n*Data temporarily unavailable.*",
-            "west": "### 🏀 Western Conference\n*Data temporarily unavailable.*"
-        }
-
-    standings_clean = standings[['TeamID', 'TeamName', 'Conference', 'PlayoffRank', 'WINS', 'LOSSES']]
-    stats_clean = stats[['TEAM_ID', 'GP', 'PTS', 'FG_PCT', 'FG3_PCT', 'PLUS_MINUS']].copy()
-    stats_clean['OPP_PTS'] = stats_clean['PTS'] - stats_clean['PLUS_MINUS']
+    print("🏀 Starting standings fetch...")
     
-    final_df = pd.merge(standings_clean, stats_clean, left_on='TeamID', right_on='TEAM_ID')
-    east_df = final_df[final_df['Conference'] == 'East'].sort_values('PlayoffRank')
-    west_df = final_df[final_df['Conference'] == 'West'].sort_values('PlayoffRank')
-
-    final_east_df = east_df.drop(columns=['TeamID','TEAM_ID'])
-    final_west_df = west_df.drop(columns=['TeamID','TEAM_ID'])
- 
+    standings = fetch_nba_data(leaguestandingsv3.LeagueStandingsV3, season='2025-26')
+    
+    if standings is None:
+        return {
+            "east": "### 🏀 Eastern Conference\n*Unable to fetch data - NBA API timeout*",
+            "west": "### 🏀 Western Conference\n*Unable to fetch data - NBA API timeout*"
+        }
+    
+    # Create simplified standings without the team stats (which is timing out)
+    standings_clean = standings[['TeamName', 'Conference', 'PlayoffRank', 'WINS', 'LOSSES']]
+    
+    east_df = standings_clean[standings_clean['Conference'] == 'East'].sort_values('PlayoffRank')
+    west_df = standings_clean[standings_clean['Conference'] == 'West'].sort_values('PlayoffRank')
+    
     return {
-        "east": "### 🏀 Eastern Conference\n" + final_east_df.to_markdown(index=False),
-        "west": "### 🏀 Western Conference\n" + final_west_df.to_markdown(index=False)
+        "east": "### 🏀 Eastern Conference\n" + east_df.to_markdown(index=False),
+        "west": "### 🏀 Western Conference\n" + west_df.to_markdown(index=False)
     }
-
 # function for the stat leaders tab
 def get_stat_leaders():
     leaders = fetch_nba_data(leagueleaders.LeagueLeaders, per_mode48='PerGame', season='2025-26')

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Core Web Server
 fastapi==0.128.0
 uvicorn==0.40.0
@@ -26,3 +27,21 @@ langgraph==1.0.7
 
 # PDF Processing (For getInjuryReport in nba_data.py)
 pymupdf==1.26.7
+=======
+langchain
+langgraph
+llama-index-core
+langchain-openai
+llama-index-llms-openai
+llama-index-llms-langchain
+llama-index-experimental
+nba_api
+pandas
+requests
+python-dotenv
+fastapi
+uvicorn
+langchain_community
+tabulate
+polars
+>>>>>>> parent of e1edefa (adding more imports)
