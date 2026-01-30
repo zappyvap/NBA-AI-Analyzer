@@ -310,7 +310,7 @@ const App = () => {
             active={location.pathname === '/league-leaders'} 
           />
           <SidebarItem 
-            to="/player_props" 
+            to="/player-props" 
             icon={<DollarSign size={18}/>} 
             label="Player Props" 
             active={location.pathname === '/player-props'} 
