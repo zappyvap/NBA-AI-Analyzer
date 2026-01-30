@@ -12,7 +12,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from langchain_community.chat_message_histories import ChatMessageHistory
-
+import asyncio
+from functools import partial
 # Import using the full path to avoid ModuleNotFoundError
 from backend.src.nba_data import getPlayerStats, getTeamStats, get_live_standings, get_stat_leaders, get_player_stats_on_date
 from backend.src.betting_engine import player_props
@@ -108,11 +109,15 @@ async def handle_chat(input: ChatMessage):
 
 @app.get("/standings")
 async def handle_standings():
-    return get_live_standings()
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, get_live_standings)
+    return result
 
 @app.get("/league_leaders")
 async def handle_league_leaders():
-    return get_stat_leaders()
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, get_stat_leaders)
+    return result
 
 @app.post("/player_props")
 async def handle_player_prop(request: PlayerPropRequest):

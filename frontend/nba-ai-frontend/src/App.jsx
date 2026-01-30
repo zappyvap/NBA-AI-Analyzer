@@ -210,10 +210,7 @@ const App = () => {
   };
 
   const fetchStandings = async () => {
-    if (standingsData.east && standingsData.west) {
-      return;
-    }
-
+    // Remove the early return check entirely
     setStandingsData({ east: "Loading East...", west: "Loading West..." });
 
     try {
@@ -313,7 +310,7 @@ const App = () => {
             active={location.pathname === '/league-leaders'} 
           />
           <SidebarItem 
-            to="/player-props" 
+            to="/player_props" 
             icon={<DollarSign size={18}/>} 
             label="Player Props" 
             active={location.pathname === '/player-props'} 
